@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bookstore</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+  
+    h1 {
+      text-align: center;
+    }
+  
+    form {
+      max-width: 400px;
+      margin: 20px auto;
+    }
+  
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+  
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  
+    button:hover {
+      background-color: #45a049;
+    }
+  
+    .book-list {
+      max-width: 600px;
+      margin: 30px auto;
+      list-style-type:none;
+      padding: 0;
+    }
+    .book-heading{
+      margin-left: 440px;
+      margin-top: 30px;
+      text-decoration: underline;
+      color: burlywood;
+       }
+  
+    .book-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid lightslategray;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+    }
+  
+    .book-item .actions {
+      display: flex;
+    }
+  
+    .book-item button {
+      margin-left: 5px;
+      background-color: #f44336;
+    }
+  
+    .book-item button:hover {
+      background-color: #e53935;
+    }
+  
+    .success-message {
+      color: green;
+      margin: 10px 0;
+    }
+  
+    .error-message {
+      color: red;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Bookstore</h1>
+  
+  <form id="add-book-form" autocomplete="off">
+    <h2>Add a Book</h2>
+    <input type="text" id="name" placeholder="Book Name" required>
+    <input type="text" id="author" placeholder="Author" required>
+    <textarea id="description" placeholder="Description" required></textarea>
+    <button type="submit">Add Book</button>
+  </form>
+  
+  <h2 class="book-heading">Book List</h2>
+  <ul class="book-list" id="book-list"></ul>
+  
+</body>
+</html>
+
+ <script>
+
+// Function to fetch all books from the backend
+async function getBooks() {
+  const response = await fetch('/books');
+  const books = await response.json();
+  return books;
+}
+
+// Function to add a book to the backend
+async function addBook(book) {
+  const response = await fetch('/books', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(book)
+  });
+  const newBook = await response.json();
+  return newBook;
+}
+
+ // Function to update a book in the backend
+ async function updateBook(id, book) {
+    const response = await fetch(`/books/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(book)
+    });
+    const updatedBook = await response.json();
+    return updatedBook;
+  }
+
+
+// Function to delete a book from the backend
+async function deleteBook(id) {
+  const response = await fetch(`/books/${id}`, {
+    method: 'DELETE'
+  });
+  const data = await response.json();
+  return data;
+}
+
+// Function to render the book list on the frontend
+function renderBookList(books) {
+  const bookList = document.getElementById('book-list');
+  bookList.innerHTML = '';
+
+  books.forEach(book => {
+    const bookItem = document.createElement('li');
+    bookItem.classList.add('book-item');
+
+    const bookDetails = document.createElement('div');
+    bookDetails.innerHTML = `<strong>${book.name}</strong> by ${book.author}<br>${book.description}`;
+
+    const actions = document.createElement('div');
+    actions.classList.add('actions');
+
+    const updateButton = document.createElement('button');
+      updateButton.textContent = 'Update';
+      updateButton.addEventListener('click', async () => {
+        const updatedName = prompt('Enter the updated name:');
+        const updatedAuthor = prompt('Enter the updated author:');
+        const updatedDescription = prompt('Enter the updated description:');
+
+        const updatedBook = await updateBook(book._id, {
+          name: updatedName,
+          author: updatedAuthor,
+          description: updatedDescription
+        });
+
+        if (updatedBook) {
+          fetchBooksAndRenderList();
+          showSuccessMessage('Book updated successfully!');
+        } else {
+          showErrorMessage('Failed to update the book.');
+        }
+      });
+      actions.appendChild(updateButton);
+
+   const deleteButton = document.createElement('button');
+    deleteButton.textContent = 'Delete';
+    deleteButton.addEventListener('click', async () => {
+      const confirmDelete = confirm('Are you sure you want to delete this book?');
+      if (confirmDelete) {
+        const data = await deleteBook(book._id);
+        if (data.message === 'Book deleted successfully') {
+          fetchBooksAndRenderList();
+        } else {
+          alert('Failed to delete the book.');
+        }
+      }
+    });
+    actions.appendChild(deleteButton);
+
+    bookItem.appendChild(bookDetails);
+    bookItem.appendChild(actions);
+
+    bookList.appendChild(bookItem);
+  });
+}
+
+// Function to fetch books from the backend and render the book list
+async function fetchBooksAndRenderList() {
+  const books = await getBooks();
+  renderBookList(books);
+}
+
+// Function to handle the form submission and add a new book
+async function handleFormSubmit(event) {
+  event.preventDefault();
+
+  const nameInput = document.getElementById('name');
+  const authorInput = document.getElementById('author');
+  const descriptionInput = document.getElementById('description');
+
+  const book = {
+    name: nameInput.value,
+    author: authorInput.value,
+    description: descriptionInput.value
+  };
+
+  const newBook = await addBook(book);
+  if (newBook) {
+    nameInput.value = '';
+    authorInput.value = '';
+    descriptionInput.value = '';
+    fetchBooksAndRenderList();
+    showSuccessMessage('Book added successfully!');
+  } else {
+    showErrorMessage('Failed to add the book.');
+  }
+}
+
+// Function to show success message
+function showSuccessMessage(message) {
+  const successMessage = document.querySelector('.success-message');
+  successMessage.textContent = message;
+  successMessage.style.display = 'block';
+  setTimeout(() => {
+    successMessage.textContent = '';
+    successMessage.style.display = 'none';
+  }, 3000);
+}
+
+// Function to show error message
+function showErrorMessage(message) {
+  const errorMessage = document.querySelector('.error-message');
+  errorMessage.textContent = message;
+  errorMessage.style.display = 'block';
+  setTimeout(() => {
+    errorMessage.textContent = '';
+    errorMessage.style.display = 'none';
+  }, 3000);
+}
+
+// Event listener for form submission
+const addBookForm = document.getElementById('add-book-form');
+addBookForm.addEventListener('submit', handleFormSubmit);
+
+// Fetch books from the backend and render the book list when the page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    const books = await getBooks();
+    renderBookList(books);
+  });
+
+
+</script> 
+
